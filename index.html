@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Rekap Absensi Desa Wonokerto</title>
+    
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                            950: '#022c22',
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02)',
+                        'card': '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02)',
+                        'glow-emerald': '0 0 25px -5px rgba(16, 185, 129, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (xlsx) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* Unified scrollbar */
+        * { scrollbar-width: thin; scrollbar-color: #94a3b8 #eef3f7; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #eef3f7; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border: 2px solid #eef3f7; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0f766e; }
+        ::-webkit-scrollbar-corner { background: #eef3f7; }
+        .overflow-x-auto, .overflow-y-auto, .overflow-auto { scrollbar-color: #94a3b8 #eef3f7; scrollbar-width: thin; }
+
+        /* Matrix Table Styling */
+        table.matrix-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        table.matrix-table th, table.matrix-table td {
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 5px 4px;
+            /* text-align: center; */
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        table.matrix-table th {
+            border-top: 1px solid #e2e8f0;
+        }
+        table.matrix-table th:first-child, table.matrix-table td:first-child {
+            border-left: 1px solid #e2e8f0;
+        }
+
+        /* Sticky Columns for Matrix Table */
+        @media screen and (min-width: 768px) {
+            .sticky-col-no {
+                position: sticky;
+                left: 0;
+                z-index: 10;
+                background-color: #ffffff;
+            }
+            .sticky-col-nama {
+                position: sticky;
+                left: 36px;
+                z-index: 10;
+                background-color: #ffffff;
+            }
+            .sticky-col-jabatan {
+                position: sticky;
+                left: 216px;
+                z-index: 10;
+                background-color: #ffffff;
+                box-shadow: 3px 0 6px -2px rgba(0,0,0,0.06);
+            }
+            thead .sticky-col-no,
+            thead .sticky-col-nama,
+            thead .sticky-col-jabatan {
+                z-index: 20 !important;
+                background-color: #f8fafc !important;
+            }
+            tr:hover .sticky-col-no,
+            tr:hover .sticky-col-nama,
+            tr:hover .sticky-col-jabatan {
+                background-color: #f8fafc;
+            }
+        }
+
+        /* Print Media Stylesheet - Kertas F4 (Folio 330mm x 215mm) Landscape, Margin 2cm */
+        /* Print Stylesheet Optimized - Portrait Format (A4 / F4) */
+        /* Print Media Stylesheet - Hybrid (Tabel 1 Landscape, Tabel 2 & 3 Portrait) */
+        /* Print Media Stylesheet - Hybrid (Tabel 1 Landscape Kompak, Tabel 2 & 3 Portrait) */
+        /* Print Media Stylesheet - Full Fit Margin Landscape untuk Tabel 1 */
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+        }
+
+        @page landscape-page {
+            size: A4 landscape;
+            margin: 1.5cm !important; /* Margin sangat tipis agar tabel melebar maksimal full kanan-kiri */
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            
+            html, body { 
+                background: white !important; 
+                font-size: 12pt !important; 
+                color: black !important; 
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Terapkan halaman Landscape khusus untuk Tabel 1 */
+            body[data-print-target="tabel-1"] {
+                page: landscape-page;
+            }
+
+            /* Filter Cetak Individual Tabel */
+            body[data-print-target="tabel-1"] .card-tabel-2,
+            body[data-print-target="tabel-1"] .card-tabel-3 {
+                display: none !important;
+            }
+
+            body[data-print-target="tabel-2"] .card-tabel-1,
+            body[data-print-target="tabel-2"] .card-tabel-3 {
+                display: none !important;
+            }
+
+            body[data-print-target="tabel-3"] .card-tabel-1,
+            body[data-print-target="tabel-3"] .card-tabel-2 {
+                display: none !important;
+            }
+
+            .max-w-7xl, main {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .card-box { 
+                border: none !important; 
+                box-shadow: none !important; 
+                border-radius: 0 !important; 
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            
+            .max-h-96, .overflow-x-auto {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            /* KHUSUS TABEL 1: Full Kanan-Kiri & Fit to Page Landscape */
+            body[data-print-target="tabel-1"] table.matrix-table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+            }
+
+            body[data-print-target="tabel-1"] table.matrix-table th, 
+            body[data-print-target="tabel-1"] table.matrix-table td {
+                border: 1px solid #1e293b !important;
+                padding: 3px 0px !important;
+                font-size: 6pt !important;
+                text-align: center !important;
+                overflow: hidden !important;
+                white-space: nowrap !important;
+            }
+
+            /* Lebar Proporsional Kolom Tabel 1 agar pas menutup halaman */
+            body[data-print-target="tabel-1"] table.matrix-table th.sticky-col-no, 
+            body[data-print-target="tabel-1"] table.matrix-table td.sticky-col-no {
+                width: 3% !important;
+            }
+
+            body[data-print-target="tabel-1"] .sticky-col-nama {
+                width: 15% !important;
+                text-align: left !important;
+                padding-left: 2px !important;
+            }
+
+            body[data-print-target="tabel-1"] .sticky-col-jabatan {
+                width: 13% !important;
+                text-align: left !important;
+                padding-left: 2px !important;
+            }
+
+            /* Tabel 2 & 3 Supaya Rapi di Portrait */
+            .card-tabel-2 table, .card-tabel-3 table {
+                border: 1px solid #334155 !important;
+                width: 100% !important;
+            }
+            .card-tabel-2 th, .card-tabel-2 td,
+            .card-tabel-3 th, .card-tabel-3 td {
+                border: 1px solid #64748b !important;
+                padding: 4px 6px !important;
+                font-size: 7.5pt !important;
+                color: black !important;
+            }
+
+            /* Mencegah Pemotongan Baris & Tanda Tangan */
+            tr {
+                page-break-inside: avoid !important;
+            }
+
+            .print-signature-block {
+                page-break-inside: avoid !important;
+                margin-top: 15px !important;
+            }
+
+            .sticky-col-no, .sticky-col-nama, .sticky-col-jabatan {
+                position: static !important;
+                box-shadow: none !important;
+                background-color: transparent !important;
+            }
+        }
+        .print-only { display: none; }
+        .print-only {
+                margin-bottom: 12px !important;
+            }
+
+        /* Signature panel accordion motion */
+        #konten-panel-ttd { display: grid; grid-template-rows: 0fr; opacity: 0; overflow: hidden; max-height: 0; margin-top: 0; padding-top: 0; border-top-color: transparent; transition: grid-template-rows .28s ease, opacity .2s ease, max-height .28s ease, margin-top .28s ease, padding-top .28s ease, border-color .28s ease !important; }
+        .ttd-panel > div { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; border-radius: .75rem !important; padding: 1rem !important; transition: transform .2s ease, border-color .2s ease, background-color .2s ease !important; }
+        .ttd-panel > div:hover { transform: translateY(-2px); border-color: #99f6e4 !important; background: #f0fdfa !important; }
+        .ttd-panel label { display: block; margin-bottom: .55rem !important; color: #334155 !important; line-height: 1.35; }
+        .ttd-panel input { border-radius: .75rem !important; border-color: #cbd5e1 !important; padding: .65rem .75rem !important; transition: border-color .2s ease, box-shadow .2s ease !important; }
+        .ttd-panel input:focus { border-color: #14b8a6 !important; box-shadow: 0 0 0 3px rgba(20, 184, 166, .12) !important; outline: none; }
+        .ttd-panel input::placeholder { color: #94a3b8; }
+        #konten-panel-ttd > * { min-height: 0; }
+        #konten-panel-ttd.panel-open { grid-template-rows: 1fr; opacity: 1; max-height: 420px; margin-top: 1.25rem; padding-top: 1rem; border-top-color: #f1f5f9; }
+
+        /* Clean motion and compact surfaces */
+        *, *::before, *::after { transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease, transform .2s ease; }
+        .card-box, main > div, main section { animation: surface-in .35s ease both; }
+        @keyframes surface-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+        .rounded-2xl, .rounded-3xl { border-radius: .75rem !important; }
+        .shadow-xl, .shadow-card, .shadow-lg, .shadow-md { box-shadow: 0 2px 8px rgba(15, 23, 42, .06) !important; }
+        .shadow-sm { box-shadow: 0 1px 4px rgba(15, 23, 42, .04) !important; }
+
+        /* Navy + teal professional dashboard theme */
+        :root { --app-primary: #0f2747; --app-secondary: #0f766e; --app-accent: #14b8a6; --app-ink: #172033; --app-muted: #64748b; }
+        body { background: #f5f7fa !important; color: var(--app-ink); }
+        header { background: linear-gradient(110deg, #0f2747 0%, #123b5d 58%, #0f766e 100%) !important; color: #fff !important; border-bottom: 0 !important; box-shadow: 0 1px 5px rgba(15, 39, 71, .16) !important; }
+        header h1 { color: #fff !important; font-size: 1rem !important; letter-spacing: -.02em; }
+        header p { color: #c7d8e8 !important; }
+        header .bg-gradient-to-br { background: linear-gradient(135deg, #14b8a6, #0f766e) !important; box-shadow: none !important; }
+        header .bg-white\\/10 { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.2) !important; color: #e2f5f3 !important; }
+        header select, header select option { color: #fff !important; background: #123b5d !important; }
+        main > div, main section, .card-tabel-1, .card-tabel-2, .card-tabel-3 { background: #fff !important; border-color: #dbe3ec !important; box-shadow: 0 2px 8px rgba(15,39,71,.045) !important; }
+        main > div:hover, main section:hover { box-shadow: 0 4px 12px rgba(15,39,71,.075) !important; }
+        .matrix-table th { background: #eef4f8 !important; color: #203b57 !important; }
+        .matrix-table tbody tr:hover td { background: #eefaf8 !important; }
+        .ttd-panel > div:hover { border-color: #8bd8d0 !important; background: #f0fbfa !important; }
+
+        /* Clean application theme */
+        :root { --app-primary: #0f766e; --app-accent: #14b8a6; --app-ink: #172033; --app-muted: #64748b; }
+        body { background: #f4f7f9 !important; color: var(--app-ink); letter-spacing: -0.01em; }
+        header { background: #ffffff !important; color: var(--app-ink) !important; border-bottom: 1px solid #e2e8f0 !important; box-shadow: 0 1px 5px rgba(15, 23, 42, .05) !important; }
+        header h1 { color: var(--app-ink) !important; font-size: 1rem !important; }
+        header p { color: var(--app-muted) !important; }
+        header .bg-gradient-to-br { background: linear-gradient(135deg, #0f766e, #14b8a6) !important; }
+        header .bg-white\\/10 { background: #f8fafc !important; border-color: #e2e8f0 !important; color: #475569 !important; }
+        header select { color: #334155 !important; }
+        header select option { background: #fff !important; color: #334155 !important; }
+        main { padding-top: 1.5rem !important; }
+        main > div, main section, .card-tabel-1, .card-tabel-2, .card-tabel-3 { border-radius: 1rem !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 18px rgba(15, 23, 42, .045) !important; }
+        main > div:hover, main section:hover { box-shadow: 0 8px 24px rgba(15, 23, 42, .07) !important; }
+        button, label[for="input-excel"] { border-radius: .7rem !important; }
+        input, select { border-radius: .6rem; }
+        .matrix-table th { background: #f8fafc !important; color: #475569; font-weight: 700; }
+        .matrix-table tbody tr:nth-child(even) td { background: #fbfdfe; }
+        .matrix-table tbody tr:hover td { background: #f0fdfa !important; }
+        .sticky-col-no, .sticky-col-nama, .sticky-col-jabatan { background-color: inherit; }
+        @media (max-width: 640px) { header .max-w-7xl { padding: .75rem 1rem !important; } main { padding: 1rem !important; } }
+
+        /* Final professional palette overrides */
+        header #select-arsip-bulan { background: transparent !important; }
+        body { background: #f5f7fa !important; }
+        header { background: linear-gradient(110deg, #0f2747, #123b5d 58%, #0f766e) !important; color: #fff !important; border-bottom: 0 !important; }
+        header h1 { color: #fff !important; } header p { color: #c7d8e8 !important; }
+        header .bg-white\\/10 { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.2) !important; color: #e2f5f3 !important; }
+        header select, header select option { color: #fff !important; background: #123b5d !important; }
+        main > div, main section, .card-tabel-1, .card-tabel-2, .card-tabel-3 { background: #fff !important; border-color: #dbe3ec !important; box-shadow: 0 2px 8px rgba(15,39,71,.045) !important; }
+        main > div:hover, main section:hover { box-shadow: 0 4px 12px rgba(15,39,71,.075) !important; }
+        .matrix-table th { background: #eef4f8 !important; color: #203b57 !important; }
+        .matrix-table tbody tr:hover td { background: #eefaf8 !important; }
+
+        /* Table controls align to the right on desktop only */
+        @media (min-width: 1024px) {
+            .card-tabel-3 > div.p-5.sm\:p-6.border-b > div.no-print.flex.items-center.gap-2\.5 { margin-left: auto; justify-content: flex-end; }
+        }
+
+        /* Tablet and mobile controls stay below the title */
+        @media (max-width: 1023px) {
+            .card-tabel-3 > div.p-5.sm\:p-6.border-b > div.no-print.flex.items-center.gap-2\.5 { width: 100%; flex-basis: 100%; margin-left: 0; justify-content: flex-start; order: 2; }
+        }
+        @media (max-width: 639px) {
+            .card-tabel-3 > div.p-5.sm\:p-6.border-b > div.no-print.flex.items-center.gap-2\.5 { width: 100%; flex-basis: 100%; order: 2; align-items: stretch; flex-direction: column; gap: .6rem; }
+            .card-tabel-3 > div.p-5.sm\:p-6.border-b > div.no-print.flex.items-center.gap-2\.5 > .relative,
+            .card-tabel-3 > div.p-5.sm\:p-6.border-b > div.no-print.flex.items-center.gap-2\.5 select,
+            .card-tabel-3 > div.p-5.sm\:p-6.border-b > div.no-print.flex.items-center.gap-2\.5 button { width: 100%; }
+        }
+
+        /* Leaderboard color alignment */
+        #leaderboard-list > .group { background: #f8fafc !important; background-image: none !important; border-color: #e2e8f0 !important; box-shadow: none !important; }
+        #leaderboard-list > .group:first-child { background: #f0fdfa !important; border-color: #99f6e4 !important; box-shadow: none !important; }
+        #leaderboard-list > .group:hover { background: #eefaf8 !important; border-color: #99f6e4 !important; }
+        #leaderboard-list .ring-amber-300\\/40 { box-shadow: none !important; }
+        #leaderboard-list .from-amber-400, #leaderboard-list .to-amber-500 { background-image: none !important; background-color: #ccfbf1 !important; color: #0f766e !important; box-shadow: none !important; }
+        #leaderboard-list .from-amber-50\\/50, #leaderboard-list .to-emerald-50\\/30 { background-image: none !important; }
+
+        /* Keep table rows compact and single-line */
+        table th, table td, .matrix-table th, .matrix-table td { white-space: nowrap !important; line-height: 1.25 !important; }
+        table td.px-4.py-3, table th.px-4.py-3 { padding-top: .55rem !important; padding-bottom: .55rem !important; }
+        #tabel-rekap-body > tr > td { height: 40px; }
+        #tabel-rekap-body > tr > td > * { line-height: 1.25 !important; }
+        table { width: max-content; min-width: 100%; }
+        .overflow-x-auto { overflow-x: auto !important; }
+
+        /* Responsive layout safeguards */
+        html, body { max-width: 100%; overflow-x: hidden; }
+        img, canvas, svg { max-width: 100%; }
+        button, input, select { max-width: 100%; }
+        .overflow-x-auto { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+        .matrix-table { min-width: 760px; }
+        .chart-container, canvas { max-height: 360px; }
+        @media (max-width: 1024px) {
+            main { padding-inline: 1rem !important; }
+            header .max-w-7xl { padding-inline: 1rem !important; }
+            .lg\\:grid-cols-12 { grid-template-columns: 1fr !important; }
+            .lg\\:col-span-7, .lg\\:col-span-5 { grid-column: span 1 / span 1 !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem .75rem !important; gap: 1rem !important; }
+            header .max-w-7xl { align-items: stretch !important; }
+            header .max-w-7xl > div { width: 100%; }
+            header .max-w-7xl > div:last-child { justify-content: space-between; }
+            header h1 { font-size: .9rem !important; }
+            header p { font-size: .68rem !important; }
+            main > div, main section, .card-tabel-1, .card-tabel-2, .card-tabel-3 { padding: 1rem !important; }
+            .ttd-panel { grid-template-columns: 1fr !important; }
+            .ttd-panel.panel-open { max-height: 900px; }
+            .overflow-x-auto { margin-inline: -.25rem; width: calc(100% + .5rem); }
+            .flex-col.md\\:flex-row { align-items: stretch !important; }
+        }
+        @media (max-width: 480px) {
+            header .max-w-7xl { padding: .7rem .75rem !important; }
+            header .max-w-7xl > div:last-child { flex-wrap: wrap; gap: .5rem; }
+            header .max-w-7xl > div:last-child > * { flex: 1 1 auto; }
+            header button, header select { min-height: 38px; }
+            main { padding-inline: .5rem !important; }
+            main > div, main section, .card-tabel-1, .card-tabel-2, .card-tabel-3 { padding: .75rem !important; border-radius: .75rem !important; }
+            .ttd-panel > div { padding: .75rem !important; }
+            .text-4xl { font-size: 2rem !important; }
+            .text-3xl { font-size: 1.65rem !important; }
+        }
+
+        /* Refined daily attendance matrix */
+        .card-tabel-1 .overflow-x-auto { padding: 0 1rem 1rem; background: #fff; }
+        .card-tabel-1 .matrix-table { min-width: 980px; border: 1px solid #dbe5ee; border-radius: .75rem; overflow: hidden; background: #fff; }
+        .card-tabel-1 .matrix-table th, .card-tabel-1 .matrix-table td { height: 34px; padding: .4rem .5rem; border-color: #e5edf3; vertical-align: middle; }
+        .card-tabel-1 .matrix-table thead th { position: sticky; top: 0; z-index: 15; background: #f1f6f9 !important; color: #29445f !important; font-size: 10px; letter-spacing: .04em; text-align: center; }
+        .card-tabel-1 .matrix-table thead tr:first-child th { height: 38px; background: #e8f0f5 !important; }
+        .card-tabel-1 .matrix-table tbody tr:nth-child(even) td { background: #fbfdfe; }
+        .card-tabel-1 .matrix-table tbody tr:hover td { background: #effaf8 !important; }
+        .card-tabel-1 .matrix-table tbody td { color: #475569; font-size: 10px; text-align: center; }
+        .card-tabel-1 .matrix-table tbody td.sticky-col-nama, .card-tabel-1 .matrix-table tbody td.sticky-col-jabatan { text-align: left; }
+        .card-tabel-1 .matrix-table .sticky-col-no, .card-tabel-1 .matrix-table .sticky-col-nama, .card-tabel-1 .matrix-table .sticky-col-jabatan { background: #fff !important; }
+        .card-tabel-1 .matrix-table tbody tr:nth-child(even) .sticky-col-no, .card-tabel-1 .matrix-table tbody tr:nth-child(even) .sticky-col-nama, .card-tabel-1 .matrix-table tbody tr:nth-child(even) .sticky-col-jabatan { background: #fbfdfe !important; }
+        .card-tabel-1 .matrix-table tbody tr:hover .sticky-col-no, .card-tabel-1 .matrix-table tbody tr:hover .sticky-col-nama, .card-tabel-1 .matrix-table tbody tr:hover .sticky-col-jabatan { background: #effaf8 !important; }
+        .card-tabel-1 .matrix-table, .card-tabel-1 .matrix-table * { box-shadow: none !important; }
+        .card-tabel-1 .matrix-table .sticky-col-no,
+        .card-tabel-1 .matrix-table tbody tr:nth-child(even) .sticky-col-no,
+        .card-tabel-1 .matrix-table tbody tr:hover .sticky-col-no {
+            background: transparent !important;
+        }
+        @media (max-width: 640px) { .card-tabel-1 .overflow-x-auto { padding-inline: .75rem; } .card-tabel-1 .matrix-table th, .card-tabel-1 .matrix-table td { height: 32px; padding-inline: .4rem; } }
+
+        /* Match discipline table to the matrix table */
+        .card-tabel-2-table-wrap { padding: 0 1rem 1rem; background: #fff; }
+        .discipline-table { min-width: 900px; border: 1px solid #dbe5ee; border-radius: .75rem; overflow: hidden; background: #fff; border-collapse: separate; border-spacing: 0; }
+        .discipline-table th, .discipline-table td { height: 34px; padding: .4rem .5rem !important; border-right: 1px solid #e5edf3; border-bottom: 1px solid #e5edf3; vertical-align: middle; white-space: nowrap; }
+        .discipline-table th { background: #e8f0f5 !important; color: #29445f !important; font-size: 10px !important; letter-spacing: .04em; text-align: center; }
+        .discipline-table td { color: #475569; font-size: 11px !important; }
+        .discipline-table tbody tr:nth-child(even) td { background: #fbfdfe; }
+        .discipline-table tbody tr:hover td { background: #effaf8 !important; }
+        .discipline-table tbody td:first-child, .discipline-table tbody td:nth-child(n+4) { text-align: center; }
+        .discipline-table tbody td:nth-child(2), .discipline-table tbody td:nth-child(3) { font-weight: 600; }
+        .discipline-table th:last-child, .discipline-table td:last-child { border-right: 0; }
+        .discipline-table thead tr:first-child th:first-child { border-top-left-radius: .75rem; }
+        .discipline-table thead tr:first-child th:last-child { border-top-right-radius: .75rem; }
+        .discipline-table, .discipline-table * { box-shadow: none !important; }
+        @media (max-width: 640px) { .card-tabel-2-table-wrap { padding-inline: .75rem; } .discipline-table th, .discipline-table td { height: 32px; padding-inline: .4rem !important; } }
+
+        /* Daily detail table aligned with the matrix and discipline tables */
+        .detail-table-wrap {
+            position: relative;
+            max-height: 24rem;
+            overflow: auto !important;
+            padding: 0 1rem 1rem;
+            background: #fff;
+        }
+        .detail-table {
+            border-collapse: separate !important;
+            border-spacing: 0;
+            min-width: 900px;
+            border: 1px solid #dbe5ee;
+            border-radius: .75rem;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: none !important;
+        }
+        .detail-table th,
+        .detail-table td {
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            padding: .6rem .75rem !important;
+            font-size: .6875rem !important;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .detail-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+        .detail-table thead th {
+            position: static;
+            z-index: auto;
+        }
+        .detail-table th {
+            background: #eef4f8 !important;
+            color: #203b57 !important;
+            border-top: 1px solid #e2e8f0;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+        .detail-table th:first-child,
+        .detail-table td:first-child { border-left: 1px solid #e2e8f0; }
+        .detail-table thead th:first-child { border-top-left-radius: .75rem; }
+        .detail-table thead th:last-child { border-top-right-radius: .75rem; }
+        .detail-table tbody tr:nth-child(even) td { background: #f8fafc; }
+        .detail-table tbody tr:hover td { background: #eefaf8 !important; }
+        .detail-table,
+        .detail-table * { box-shadow: none !important; }
+        @media (max-width: 640px) {
+            .detail-table-wrap { padding-inline: .75rem; padding-bottom: .75rem; }
+        }
+
+        /* Harmonized application typography */
+        main { font-size: .875rem; }
+        main h1, main h2, main h3, main h4 { letter-spacing: -.01em; }
+        main h2 { font-size: 1rem !important; line-height: 1.35 !important; }
+        main h3 { font-size: .9375rem !important; line-height: 1.35 !important; }
+        main p, main label, main button, main input, main select { font-size: .75rem; line-height: 1.4; }
+        main .text-\[10px\], main .text-\[11px\], main .text-xs { font-size: .6875rem !important; line-height: 1.35 !important; }
+        main .text-sm { font-size: .8125rem !important; line-height: 1.4 !important; }
+        main .text-base { font-size: .9375rem !important; line-height: 1.4 !important; }
+        main .text-lg { font-size: 1.0625rem !important; line-height: 1.35 !important; }
+        main .text-xl, main .text-2xl { font-size: 1.25rem !important; line-height: 1.3 !important; }
+        main .text-3xl, main .text-4xl { font-size: 1.75rem !important; line-height: 1.2 !important; }
+        main .matrix-table th, main .matrix-table td { font-size: .6875rem !important; }
+        main .matrix-table th { font-weight: 700; }
+        main .matrix-table td { line-height: 1.25 !important; }
+        main .font-bold { font-weight: 700; }
+        main .font-semibold { font-weight: 600; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- HEADER / TOP NAVBAR -->
+    <header class="bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white shadow-xl border-b border-emerald-500/20 no-print sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- Logo & Brand Info -->
+            <div class="flex items-center space-x-3.5">
+                <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-500/30 ring-2 ring-white/20">
+                    <i class="fa-solid fa-clipboard-user text-xl"></i>
+                    <span class="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white leading-tight">
+                            Sistem Absensi & Evaluasi Kepegawaian
+                        </h1>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 hidden sm:inline-block">
+                            OpenSID Ready
+                        </span>
+                    </div>
+                    <p class="text-xs text-emerald-200/90 font-medium flex items-center gap-1.5 mt-0.5">
+                        Pemerintah Desa Wonokerto &bull; Kec. Leksono &bull; Kab. Wonosobo
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Dropdown Arsip Bulan -->
+                <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-xs text-emerald-100">
+                    <i class="fa-solid fa-box-archive text-emerald-300"></i>
+                    <select id="select-arsip-bulan" onchange="muatArsipBulan(this.value)" class="bg-transparent text-white font-semibold outline-none cursor-pointer text-xs focus:bg-slate-800 focus:text-white rounded px-1 py-0.5">
+                        <option value="CURRENT" class="bg-slate-800 text-white">Periode Aktif</option>
+                    </select>
+                </div>
+
+                <button onclick="konfirmasiReset()" class="group relative inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 via-rose-600 to-rose-700 hover:from-rose-400 hover:to-rose-600 text-white font-bold px-4 py-2 rounded-lg text-xs sm:text-sm shadow-lg shadow-rose-500/20 hover:shadow-rose-500/30 transition-all duration-200 transform active:scale-95" title="Reset semua data ke pengaturan awal">
+                    <i class="fa-solid fa-rotate-right text-white group-hover:-rotate-90 transition-transform"></i>
+                    <span>Reset Semua Data</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KOP SURAT PRINT ONLY -->
+    <div class="print-only px-4 pt-1 pb-3 text-center mb-2">
+        <h3 class="text-base font-bold uppercase tracking-wide">Pemerintah Kabupaten Wonosobo</h3>
+        <h3 class="text-base font-bold uppercase tracking-wide">Kecamatan Leksono</h3>
+        <h2 class="text-lg font-bold uppercase tracking-wider">Desa Wonokerto</h2>
+        <p class="text-[10px] mt-0.5">Jl. Sukoharjo Km. 3 Wonokerto, Wonosobo, Jawa Tengah &mdash; 56362 | Telepon: 0851-5678-0064</p>
+        <p class="text-[10px] mt-0.5">Telepon: 0851-5678-0064</p>
+        <p class="text-[10px] mt-0.5">Laman: wonokerto-leksono.desa.id Pos-el: pemdes.wonokerto.wsb@gmail.com</p>
+
+        <!-- Garis Kop Surat -->
+        <div class="border-t-2 border-black mt-1 mb-5"></div>
+        
+        <!-- Judul Dokumen (Tanpa Garis Bawah & Jarak Proporsional) -->
+        <h4 class="text-xs font-bold uppercase tracking-wide" id="print-judul-dokumen">DAFTAR ABSENSI DAN RINCIAN LOG KEHADIRAN APARATUR DESA</h4>
+        <p class="text-[10px] text-gray-800 font-bold mt-0.5" id="print-periode">BULAN: SEPTEMBER 2026</p>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1 w-full space-y-6 sm:space-y-8">
+
+        <!-- PANEL IMPORT FILE OPENSID & PENGATURAN LIBUR -->
+        <div class="relative overflow-hidden bg-white rounded-2xl p-5 sm:p-6 shadow-card border border-slate-200/80 no-print transition-all">
+            
+            <div class="relative z-10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-5">
+                <!-- Icon & Text Info -->
+                <div class="flex items-start sm:items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 text-emerald-700 border border-emerald-200/60 flex items-center justify-center text-xl font-bold shadow-inner flex-shrink-0">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-base font-bold text-slate-800">Sinkronisasi Data OpenSID (.xlsx / .csv)</h2>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Auto-Detect</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">Unggah laporan presensi OpenSID untuk sinkronisasi otomatis matriks harian, skor disiplin, & log aparatur.</p>
+                    </div>
+                    
+                </div>
+                
+                <!-- Input Controls -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <!-- Input Libur Tambahan -->
+                    <div class="flex items-center bg-slate-50 border border-slate-200/90 hover:border-slate-300 rounded-xl px-4 py-2.5 transition-all focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 focus-within:bg-white">
+                        <label for="input-libur-tambahan" class="text-xs font-semibold text-slate-600 whitespace-nowrap mr-2 flex items-center gap-1.5">
+                            <i class="fa-regular fa-calendar-xmark text-rose-500"></i> Libur Ekstra:
+                        </label>
+                        <input type="text" id="input-libur-tambahan" placeholder="Contoh: 16, 17" onchange="kalkulasiData()" class="bg-transparent text-xs w-24 text-slate-800 font-medium placeholder:text-slate-400 outline-none">
+                    </div>
+
+                    <!-- Upload Button & Hidden Input -->
+                    <input type="file" id="input-excel" accept=".xlsx, .xls, .csv" multiple class="hidden" onchange="handleFileUpload(event)">
+                    <label for="input-excel" class="cursor-pointer group inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-md shadow-emerald-600/20 hover:shadow-emerald-600/30 transition-all duration-200 transform active:scale-95 whitespace-nowrap">
+                        <i class="fa-solid fa-cloud-arrow-up text-sm group-hover:-translate-y-0.5 transition-transform"></i>
+                        <span id="label-upload-btn">Unggah File OpenSID</span>
+                    </label>
+                </div>
+            </div>
+            <!-- PANEL PENGATURAN TANDA TANGAN (COLLAPSIBLE / ACCORDION) -->
+            <div class="bg-white rounded-2xl p-3 mt-5 shadow-sm border border-slate-200/80 no-print transition-all">
+                <div class="flex items-center justify-between cursor-pointer select-none" onclick="togglePanelTtd()">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-base">
+                            <i class="fa-solid fa-signature"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm sm:text-base font-bold text-slate-800 tracking-tight">Pengaturan Pejabat Penandatangan Laporan</h2>
+                            <p class="text-xs text-slate-400">Sesuaikan nama dan jabatan pejabat yang tertera pada lembar pengesahan cetak</p>
+                        </div>
+                    </div>
+                    <!-- Tombol Toggle Panah & Teks -->
+                    <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
+                        <span id="label-toggle-ttd">Tampilkan Pengaturan</span>
+                        <i class="fa-solid fa-chevron-down transition-transform duration-200" id="icon-toggle-ttd"></i>
+                    </button>
+                </div>
+
+                <!-- Konten Form yang Defaultnya Tersembunyi (hidden) -->
+                <div id="konten-panel-ttd" class="hidden mt-5 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs ttd-panel">
+                    <!-- Pejabat 1 -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <label class="block font-bold text-slate-700 mb-1">1. Diverifikasi Oleh (Kaur Umum):</label>
+                        <input type="text" id="input-nama-1" value="MAHFUD, A.Md.Kom." oninput="simpanPengaturanTtd()" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 mb-2 outline-none focus:ring-1 focus:ring-emerald-500">
+                        <input type="text" id="input-jabatan-1" value="Kaur Umum & Perencanaan" oninput="simpanPengaturanTtd()" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-600 outline-none focus:ring-1 focus:ring-emerald-500">
+                    </div>
+
+                    <!-- Pejabat 2 -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <label class="block font-bold text-slate-700 mb-1">2. Mengetahui (Sekdes):</label>
+                        <input type="text" id="input-nama-2" value="KHOMAT" oninput="simpanPengaturanTtd()" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 mb-2 outline-none focus:ring-1 focus:ring-emerald-500">
+                        <input type="text" id="input-jabatan-2" value="Sekretaris Desa Wonokerto" oninput="simpanPengaturanTtd()" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-600 outline-none focus:ring-1 focus:ring-emerald-500">
+                    </div>
+
+                    <!-- Pejabat 3 -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <label class="block font-bold text-slate-700 mb-1">3. Menyetujui (Kepala Desa):</label>
+                        <input type="text" id="input-nama-3" value="DENY SETYA WIBOWO, S.Pd." oninput="simpanPengaturanTtd()" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-800 mb-2 outline-none focus:ring-1 focus:ring-emerald-500">
+                        <input type="text" id="input-jabatan-3" value="Kepala Desa Wonokerto" oninput="simpanPengaturanTtd()" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 font-medium text-slate-600 outline-none focus:ring-1 focus:ring-emerald-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+
+        <!-- RINGKASAN METRIK / UNIFIED KPI STRIP -->
+        <div class="bg-white rounded-2xl shadow-card border border-slate-200/80 no-print overflow-hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+                
+                <!-- Metric 1: Total Aparatur -->
+                <div class="p-5 sm:p-6 flex flex-col justify-between hover:bg-slate-50/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Aparatur</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h3 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight" id="stat-total-perangkat">0 Orang</h3>
+                        <div class="flex items-center gap-1.5 mt-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <i class="fa-solid fa-check text-[9px] mr-1"></i> Terdata
+                            </span>
+                            <span class="text-xs text-slate-400" id="label-periode-sub">September 2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metric 2: Hari Kerja Efektif -->
+                <div class="p-5 sm:p-6 flex flex-col justify-between hover:bg-slate-50/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hari Kerja Efektif</span>
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h3 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight" id="stat-hari-efektif">22 Hari</h3>
+                        <div class="flex items-center gap-1.5 mt-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                <i class="fa-regular fa-calendar text-[9px] mr-1"></i> Senin s.d. Jumat
+                            </span>
+                            <span class="text-xs text-slate-400">Non-Libur</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metric 3: Rata-rata Kehadiran -->
+                <div class="p-5 sm:p-6 flex flex-col justify-between hover:bg-slate-50/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rata-rata Kehadiran</span>
+                        <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h3 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight" id="stat-avg-kehadiran">0%</h3>
+                        <div class="flex items-center gap-1.5 mt-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                <i class="fa-solid fa-chart-simple text-[9px] mr-1"></i> Akumulasi
+                            </span>
+                            <span class="text-xs text-slate-400">Log OpenSID</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metric 4: Skor Disiplin Rata-rata -->
+                <div class="p-5 sm:p-6 flex flex-col justify-between hover:bg-slate-50/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Skor Disiplin Rata-rata</span>
+                        <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-award"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h3 class="text-2xl sm:text-3xl font-bold text-emerald-600 tracking-tight" id="stat-disiplin-overall">0 Poin</h3>
+                        <div class="flex items-center gap-1.5 mt-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                Indeks Komposit
+                            </span>
+                            <span class="text-xs text-slate-400">Skala 100</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- GRAFIK ANALISIS & LEADERBOARD -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 no-print" style="background: transparent !important; box-shadow: none !important;">
+            
+            <!-- Kalender Aktivitas Hari Kerja (Span 7) -->
+            <div class="lg:col-span-7 bg-white p-5 sm:p-6 rounded-2xl shadow-card border border-slate-200/80 flex flex-col justify-between">
+                <div>
+                    <!-- Header Kalender -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-base">
+                                <i class="fa-regular fa-calendar-days"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-800 tracking-tight">Kalender Aktivitas Hari Kerja</h2>
+                                <p class="text-xs text-slate-400">Distribusi & tingkat kehadiran aparatur per tanggal</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700">
+                                <i class="fa-solid fa-clock-rotate-left mr-1.5 text-emerald-600"></i>
+                                <span id="cal-periode-badge">September 2026</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Header Hari (Sen - Min) -->
+                    <div class="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2 text-center text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <div class="py-1">Sen</div>
+                        <div class="py-1">Sel</div>
+                        <div class="py-1">Rab</div>
+                        <div class="py-1">Kam</div>
+                        <div class="py-1">Jum</div>
+                        <div class="py-1 text-rose-500 font-bold">Sab</div>
+                        <div class="py-1 text-rose-500 font-bold">Min</div>
+                    </div>
+
+                    <!-- Grid Tanggal Dinamis -->
+                    <div id="mini-calendar-grid" class="grid grid-cols-7 gap-1.5 sm:gap-2">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Footer Kalender: Legenda & Rata-rata Harian -->
+                <div class="mt-4 pt-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px]">
+                    <!-- Legenda Status -->
+                    <div class="flex items-center gap-3 flex-wrap text-slate-400 font-medium">
+                        <span class="inline-flex items-center gap-1">
+                            <span class="w-2.5 h-2.5 rounded bg-emerald-500 inline-block"></span>
+                            <span>Optimal (&ge;80%)</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                            <span class="w-2.5 h-2.5 rounded bg-amber-500 inline-block"></span>
+                            <span>Sedang</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                            <span class="w-2.5 h-2.5 rounded bg-rose-400 inline-block"></span>
+                            <span>Libur / Cuti</span>
+                        </span>
+                    </div>
+
+                    <!-- Rata-rata Masuk per Hari -->
+                    <div class="inline-flex items-center gap-1.5 text-slate-600 font-semibold bg-emerald-50/70 px-2.5 py-1 rounded-lg border border-emerald-100">
+                        <i class="fa-solid fa-users-viewfinder text-emerald-600 text-[10px]"></i>
+                        <span id="cal-avg-hadir-perhari">0 Aparatur / Hari</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peringkat Kedisiplinan / Leaderboard (Span 5) -->
+            <div class="lg:col-span-5 bg-white p-6 sm:p-7 rounded-2xl shadow-card border border-slate-200/80 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold text-base">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm sm:text-base font-bold text-slate-800 tracking-tight">Peringkat Kedisiplinan</h2>
+                                <p class="text-xs text-slate-400">Top 5 Berdasarkan Presensi & Jam Masuk</p>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-amber-100/70 text-amber-800 border border-amber-200">
+                            Top 5
+                        </span>
+                    </div>
+
+                    <!-- Dynamic Leaderboard Items -->
+                    <div id="leaderboard-list" class="space-y-3 mt-3">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                    <span><i class="fa-solid fa-circle-info text-emerald-500 mr-1"></i> Bobot: 65% Presensi + 35% Ketepatan Waktu</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABEL 1: MATRIKS ABSEN HARIAN OTOMATIS -->
+        <div class="bg-white rounded-2xl shadow-card border border-slate-200/80 card-box overflow-hidden card-tabel-1">
+            <div class="p-5 sm:p-6 flex flex-col sm:flex-row justify-between sm:items-center gap-3 no-print" style="border-bottom: 0 !important;">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold text-base">
+                        <i class="fa-solid fa-table-cells"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-slate-800 tracking-tight">1. Matriks Kalender Absensi Harian</h2>
+                        <p class="text-xs text-slate-400">Tabel log otomatis (Kolom merah: Sabtu/Minggu / Cuti Bersama)</p>
+                    </div>
+                </div>
+                <!-- Legend -->
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2.5 text-xs">
+                        <span class="inline-flex items-center gap-1 text-slate-600">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Hadir
+                        </span>
+                        <span class="inline-flex items-center gap-1 text-slate-600">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Libur
+                        </span>
+                        <span class="inline-flex items-center gap-1 text-slate-600">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block"></span> Mangkir
+                        </span>
+                    </div>
+                    <button onclick="cetakTabel('tabel-1')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 shadow-2xs hover:shadow transition-all active:scale-95">
+                        <i class="fa-solid fa-print"></i> Cetak Tabel 1 (F4)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Matrix Table -->
+            <div class="overflow-x-auto relative">
+                <table class="w-full matrix-table text-left">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-800 font-bold text-xs">
+                            <th rowspan="2" class="w-9 sticky-col-no">NO</th>
+                            <th rowspan="2" class="min-w-[190px] text-left px-3 sticky-col-nama">NAMA LENGKAP</th>
+                            <th rowspan="2" class="min-w-[160px] text-left px-3 sticky-col-jabatan">JABATAN</th>
+                            <th id="matrix-header-group" colspan="30" class="text-center bg-slate-200/70 font-bold uppercase tracking-wider text-slate-700 py-1.5">TANGGAL KALENDER</th>
+                            <th colspan="2" class="bg-slate-300/80 text-slate-800 font-bold">REKAP</th>
+                        </tr>
+                        <tr id="matrix-header-dates" class="bg-slate-50 text-[10px] text-center">
+                            <!-- Generated dates -->
+                        </tr>
+                    </thead>
+                    <tbody id="matrix-tbody" class="divide-y divide-slate-100">
+                        <!-- Dynamic matrix rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TABEL 2: REKAPITULASI & SKOR KEDISIPLINAN -->
+        <div class="bg-white rounded-2xl shadow-card border border-slate-200/80 card-box overflow-hidden card-tabel-2 page-break">
+            <div class="p-5 sm:p-6 flex flex-col sm:flex-row justify-between sm:items-center gap-3 no-print" style="border-bottom: 0 !important;">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold text-base">
+                        <i class="fa-solid fa-ranking-star"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-slate-800 tracking-tight">2. Tabel Skor Kedisiplinan & Persentase Kehadiran</h2>
+                        <p class="text-xs text-slate-400">Evaluasi performa bulanan aparatur berdasarkan kalkulasi bobot disiplin</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+    <button onclick="eksporRekapExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs border border-emerald-200 shadow-2xs hover:shadow transition-all active:scale-95">
+        <i class="fa-solid fa-file-excel text-emerald-600"></i> Ekspor Excel
+    </button>
+    <button onclick="cetakTabel('tabel-2')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200 shadow-2xs hover:shadow transition-all active:scale-95">
+        <i class="fa-solid fa-print"></i> Cetak Tabel 2 (F4)
+    </button>
+</div>
+            </div>
+            <div class="overflow-x-auto card-tabel-2-table-wrap">
+                <table class="w-full text-sm text-left discipline-table">
+                    <thead class="text-xs uppercase bg-slate-100/70 text-slate-600 border-b border-slate-200 font-bold">
+                        <tr>
+                            <th class="px-4 py-3.5 text-center w-12">No</th>
+                            <th class="px-4 py-3.5">Nama Lengkap</th>
+                            <th class="px-4 py-3.5">Jabatan</th>
+                            <th class="px-4 py-3.5 text-center">Hadir (H)</th>
+                            <th class="px-4 py-3.5 text-center">Mangkir (TH)</th>
+                            <th class="px-4 py-3.5 text-center">Rata-rata Masuk</th>
+                            <th class="px-4 py-3.5 text-center">% Kehadiran</th>
+                            <th class="px-4 py-3.5 text-center">Skor Disiplin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabel-rekap-body" class="divide-y divide-slate-200/80">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TABEL 3: RINCIAN DETAIL LOG ABSEN HARIAN PERANGKAT -->
+        <div class="bg-white rounded-2xl shadow-card border border-slate-200/80 card-box overflow-hidden card-tabel-3 page-break">
+            <div class="p-5 sm:p-6 flex flex-col sm:flex-row justify-between sm:items-start gap-4 no-print" style="border-bottom: 0 !important;">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 flex items-center justify-center font-bold text-base">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-slate-800 tracking-tight">3. Rincian Log Absensi Harian Aparatur</h2>
+                        <p class="text-xs text-slate-400">Pencatatan waktu masuk, waktu keluar, dan durasi kerja perorangan</p>
+                    </div>
+                </div>
+                <div class="no-print flex items-center gap-2.5 flex-wrap lg:justify-end" style="margin-left: auto;">
+                    <div class="relative flex flex-col items-start gap-1">
+                        <label for="filter-perangkat" class="text-xs font-semibold text-slate-400">Filter Aparatur:</label>
+                        <div class="relative">
+                            <select id="filter-perangkat" onchange="renderDetailHarian()" class="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs rounded-lg pl-3 pr-7 py-2 font-medium w-64 max-w-full focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none cursor-pointer transition">
+                            <option value="ALL">-- Tampilkan Semua Perangkat --</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <button onclick="cetakTabel('tabel-3')" class="inline-flex items-center gap-1.5 px-3 py-2 self-end rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs border border-teal-200 shadow-2xs hover:shadow transition-all active:scale-95">
+                        <i class="fa-solid fa-print"></i> Cetak Tabel 3 (F4)
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-96 detail-table-wrap">
+                <table class="w-full text-sm text-left border-collapse detail-table">
+                    <thead class="text-xs uppercase bg-slate-100/70 text-slate-600 border-b border-slate-200 sticky top-0 z-10 font-bold backdrop-blur-md">
+                        <tr>
+                            <th class="px-4 py-3">Nama Aparatur</th>
+                            <th class="px-4 py-3">Jabatan</th>
+                            <th class="px-4 py-3">Tanggal</th>
+                            <th class="px-4 py-3 text-center">Jam Masuk</th>
+                            <th class="px-4 py-3 text-center">Jam Keluar</th>
+                            <th class="px-4 py-3 text-center">Total Durasi</th>
+                            <th class="px-4 py-3 text-center">Status Kehadiran</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabel-detail-body" class="divide-y divide-slate-200/80">
+                        <!-- Dynamic Detail Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- LEMBAR TANDA TANGAN UNTUK PRINT -->
+        <div class="print-only print-signature-block">
+            <div class="grid grid-cols-3 text-center text-xs mt-10">
+                <div>
+                    <p>Diverifikasi Oleh:</p>
+                    <p class="mt-1 font-bold" id="print-jabatan-1">Kaur Umum & Perencanaan</p>
+                    <div class="h-16"></div>
+                    <p class="font-bold underline" id="print-nama-1">MAHFUD, A.Md.Kom.</p>
+                </div>
+                <div>
+                    <p>Mengetahui / Menyetujui:</p>
+                    <p class="mt-1 font-bold" id="print-jabatan-2">Sekretaris Desa Wonokerto</p>
+                    <div class="h-16"></div>
+                    <p class="font-bold underline" id="print-nama-2">KHOMAT</p>
+                </div>
+                <div>
+                    <p id="print-tgl-ttd">Wonokerto, 31 Agustus 2026</p>
+                    <p class="mt-1 font-bold" id="print-jabatan-3">Kepala Desa Wonokerto</p>
+                    <div class="h-16"></div>
+                    <p class="font-bold underline" id="print-nama-3">DENY SETYA WIBOWO, S.Pd.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-5 text-center text-xs text-slate-400 no-print mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>&copy; 2026 Pemerintah Desa Wonokerto &bull; Sistem Presensi & Evaluasi Kepegawaian</p>
+            <p class="text-slate-400">Kompatibel dengan modul Rekap Presensi OpenSID</p>
+        </div>
+    </footer>
+
+    <!-- LOGIC JAVASCRIPT LENGKAP & BERSIH -->
+    <!-- LOGIC JAVASCRIPT LENGKAP & BERSIH -->
+    <script>
+        let rawLogData = [];
+        let summaryData = [];
+        let detectedPeriode = "SEPTEMBER 2026";
+        let detectedYear = 2026;
+        let detectedMonth = 9;
+        let totalDaysInMonth = 30;
+        let chartInstance = null;
+
+        const sotkOrder = [
+            "KEPALA DESA",
+            "SEKRETARIS DESA",
+            "KAUR UMUM DAN PERENCANAAN",
+            "KAUR KEUANGAN",
+            "KAUR TATA USAHA",
+            "KASI PEMERINTAHAN",
+            "KASI KESEJAHTERAAN",
+            "KASI PELAYANAN",
+            "KEPALA DUSUN",
+            "STAFF",
+            "STAF",
+            "TENAGA BANTU",
+            "PKL"
+        ];
+
+        function getSortedData(dataArray) {
+            return dataArray.sort((a, b) => {
+                // Ambil teks jabatan dari properti objek dengan aman
+                let jabatanA = String(a.jabatan || a.Jabatan || '').trim().toUpperCase();
+                let jabatanB = String(b.jabatan || b.Jabatan || '').trim().toUpperCase();
+
+                // Cari indeks kecocokan berdasarkan daftar sotkOrder
+                let idxA = sotkOrder.findIndex(keyword => jabatanA.includes(keyword));
+                let idxB = sotkOrder.findIndex(keyword => jabatanB.includes(keyword));
+
+                // Jika jabatan tidak ditemukan di daftar, letakkan di urutan bawah
+                if (idxA === -1) idxA = 99;
+                if (idxB === -1) idxB = 99;
+
+                return idxA - idxB;
+            });
+        }
+
+        function hitungSkorDisiplin(hadir, total, avgTimeStr) {
+            if (total === 0) return 0;
+            const pctHadir = (hadir / total) * 100;
+            const parts = avgTimeStr.split(":");
+            const minutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            
+            let factorJam = 100 - ((minutes - 480) * 0.3);
+            if (factorJam < 0) factorJam = 0;
+            if (factorJam > 100) factorJam = 100;
+
+            const skor = (pctHadir * 0.65) + (factorJam * 0.35);
+            return Math.round(skor);
+        }
+
+        function parseMonthYearFromDateString(dateStr) {
+            const monthsIndo = [
+                'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            ];
+            let lower = String(dateStr).toLowerCase();
+            let foundMonthIndex = 8;
+            let monthName = 'September';
+            let foundYear = 2026;
+
+            for (let i = 0; i < monthsIndo.length; i++) {
+                if (lower.includes(monthsIndo[i].toLowerCase())) {
+                    foundMonthIndex = i;
+                    monthName = monthsIndo[i];
+                    break;
+                }
+            }
+
+            const matchYear = String(dateStr).match(/\d{4}/);
+            if (matchYear) {
+                foundYear = parseInt(matchYear[0]);
+            }
+
+            return { 
+                year: foundYear, 
+                month: foundMonthIndex + 1, 
+                periodeStr: `${monthName.toUpperCase()} ${foundYear}` 
+            };
+        }
+
+        function handleFileUpload(event) {
+            const files = [...event.target.files];
+            if (!files.length) return;
+            const labelBtn = document.getElementById('label-upload-btn');
+            if (labelBtn) labelBtn.textContent = files.length === 1 ? files[0].name : `${files.length} file dipilih`;
+            prosesFileOpenSID(files);
+        }
+
+        function prosesFileOpenSID(files) {
+            files = Array.isArray(files) ? files : [files];
+            if (!files.length) return;
+            const hasil = [];
+            let selesai = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        hasil.push(...XLSX.utils.sheet_to_json(worksheet));
+                    } catch (err) {
+                        console.error(err);
+                        tampilkanNotifikasi(`Gagal membaca ${file.name}: ${err.message}`, 'error');
+                    } finally {
+                        selesai++;
+                        if (selesai === files.length) prosesDataGabungan(hasil);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function prosesDataGabungan(jsonData) {
+            try {
+                try {
+                    if (jsonData.length === 0) {
+                        tampilkanNotifikasi("File kosong atau format tidak sesuai!", 'error');
+                        return;
+                    }
+
+                    rawLogData = jsonData;
+
+                    if (jsonData[0]['Tanggal']) {
+                        const sampleTgl = String(jsonData[0]['Tanggal']);
+                        detectedPeriode = sampleTgl.toUpperCase();
+                        const parsed = parseMonthYearFromDateString(sampleTgl);
+                        detectedYear = parsed.year;
+                        detectedMonth = parsed.month;
+                    }
+
+                    totalDaysInMonth = new Date(detectedYear, detectedMonth, 0).getDate();
+
+                    const grouped = {};
+                    jsonData.forEach(row => {
+                        const nama = row['Nama'] || row['nama'];
+                        const jabatan = row['Jabatan'] || row['jabatan'] || '-';
+                        const tglStr = String(row['Tanggal'] || row['tanggal'] || '');
+                        const jamMasuk = row['Jam Masuk'] || row['jam_masuk'] || '-';
+
+                        if (!nama) return;
+
+                        if (!grouped[nama]) {
+                            grouped[nama] = { nama, jabatan, log: {} };
+                        }
+
+                        let dayNum = null;
+                        if (tglStr.includes('-') && tglStr.split('-')[0].length === 4) {
+                            dayNum = parseInt(tglStr.split('-')[2]);
+                        } else {
+                            const matchDay = tglStr.match(/\b\d{1,2}\b/);
+                            if (matchDay) dayNum = parseInt(matchDay[0]);
+                            else {
+                                const m = tglStr.match(/\d+/);
+                                if (m) dayNum = parseInt(m[0]);
+                            }
+                        }
+
+                        if (dayNum && !isNaN(dayNum)) {
+                            grouped[nama].log[dayNum] = jamMasuk;
+                        }
+                    });
+
+                    summaryData = [];
+                    for (let k in grouped) {
+                        summaryData.push(grouped[k]);
+                    }
+
+                    kalkulasiData();
+                    tampilkanNotifikasi("Berhasil mengimpor " + jsonData.length + " data presensi (" + detectedPeriode + ", " + totalDaysInMonth + " Hari)!", 'success');
+                } catch (err) {
+                    console.error(err);
+                    alert("Terjadi kesalahan saat memproses file Excel: " + err.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Terjadi kesalahan saat memproses file Excel: " + err.message);
+            }
+        }
+
+        function getListLibur() {
+            let weekends = [];
+            for (let d = 1; d <= totalDaysInMonth; d++) {
+                let dateObj = new Date(detectedYear, detectedMonth - 1, d);
+                let dayOfWeek = dateObj.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    weekends.push(d);
+                }
+            }
+
+            const inputExtra = document.getElementById('input-libur-tambahan').value;
+            if (!inputExtra.trim()) return weekends;
+
+            const extras = inputExtra.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            return [...new Set([...weekends, ...extras])];
+        }
+
+        function kalkulasiData() {
+            const listLibur = getListLibur();
+            const totalWorkDays = Math.max(1, totalDaysInMonth - listLibur.length);
+            document.getElementById('stat-hari-efektif').textContent = totalWorkDays + " Hari";
+            
+            // Perbarui tanggal tanda tangan secara dinamis berdasarkan periode laporan
+            updateTandaTanganDinamis();
+
+            let processed = [];
+            
+            // Pastikan data diurutkan berdasarkan SOTK Jabatan terlebih dahulu
+            let sortedRaw = getSortedData(summaryData);
+            let idx = 1;
+
+            sortedRaw.forEach(item => {
+                let hadirCount = 0;
+                let jamMasukList = [];
+
+                for (let day = 1; day <= totalDaysInMonth; day++) {
+                    if (!listLibur.includes(day)) {
+                        if (item.log[day] && item.log[day] !== '-') {
+                            hadirCount++;
+                            if (item.log[day].includes(':')) {
+                                jamMasukList.push(item.log[day]);
+                            }
+                        }
+                    }
+                }
+
+                let avgStr = "08:00";
+                if (jamMasukList.length > 0) {
+                    let totalMins = 0;
+                    jamMasukList.forEach(t => {
+                        const p = t.split(':');
+                        totalMins += (parseInt(p[0]) * 60 + parseInt(p[1]));
+                    });
+                    const avgMin = Math.round(totalMins / jamMasukList.length);
+                    const h = Math.floor(avgMin / 60).toString().padStart(2, '0');
+                    const m = (avgMin % 60).toString().padStart(2, '0');
+                    avgStr = h + ":" + m;
+                }
+
+                processed.push({
+                    no: idx++,
+                    nama: item.nama,
+                    jabatan: item.jabatan,
+                    hadir: hadirCount,
+                    mangkir: Math.max(0, totalWorkDays - hadirCount),
+                    avgTime: avgStr,
+                    totalWorkDays: totalWorkDays,
+                    log: item.log
+                });
+            });
+
+            // Simpan ke localStorage & Arsip
+            try {
+                const appState = {
+                    rawLogData: rawLogData,
+                    summaryData: summaryData,
+                    detectedPeriode: detectedPeriode,
+                    detectedYear: detectedYear,
+                    detectedMonth: detectedMonth,
+                    totalDaysInMonth: totalDaysInMonth,
+                    liburTambahan: document.getElementById('input-libur-tambahan').value,
+                    fileName: document.getElementById('label-upload-btn').textContent
+                };
+                localStorage.setItem('wonokerto_absensi_state', JSON.stringify(appState));
+                
+                // Simpan ke arsip bulanan juga
+                if (typeof simpanKeArsip === 'function') {
+                    simpanKeArsip(appState);
+                }
+            } catch (e) {
+                console.error("Gagal menyimpan ke localStorage:", e);
+            }
+
+            renderAll(processed, listLibur);
+        }
+
+        function getInitials(name) {
+            if (!name) return 'AP';
+            const clean = name.replace(/,.*$/, '').trim();
+            const parts = clean.split(' ');
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return parts[0].slice(0, 2).toUpperCase();
+        }
+
+        function renderAll(data, listLibur) {
+            document.getElementById('print-periode').textContent = "BULAN: " + detectedPeriode;
+            document.getElementById('label-periode-sub').textContent = detectedPeriode;
+            const topPeriodeEl = document.getElementById('label-top-periode');
+            if (topPeriodeEl) topPeriodeEl.textContent = detectedPeriode;
+
+            document.getElementById('matrix-header-group').setAttribute('colspan', totalDaysInMonth);
+
+            const headerDatesTr = document.getElementById('matrix-header-dates');
+            headerDatesTr.innerHTML = '';
+            for (let i = 1; i <= totalDaysInMonth; i++) {
+                const isLibur = listLibur.includes(i);
+                const th = document.createElement('th');
+                th.className = isLibur 
+                    ? "bg-rose-50 text-rose-600 font-bold border-rose-200" 
+                    : "bg-slate-50 text-slate-700 font-bold";
+                th.textContent = i;
+                headerDatesTr.appendChild(th);
+            }
+            const thH = document.createElement('th'); 
+            thH.className = "bg-emerald-100 text-emerald-900 font-bold w-10"; 
+            thH.textContent = "H";
+            
+            const thTH = document.createElement('th'); 
+            thTH.className = "bg-rose-100 text-rose-900 font-bold w-10"; 
+            thTH.textContent = "TH";
+            
+            headerDatesTr.appendChild(thH);
+            headerDatesTr.appendChild(thTH);
+
+            const matrixTbody = document.getElementById('matrix-tbody');
+            const tbodyRekap = document.getElementById('tabel-rekap-body');
+            const leaderboardList = document.getElementById('leaderboard-list');
+            const selectPerangkat = document.getElementById('filter-perangkat');
+
+            matrixTbody.innerHTML = '';
+            tbodyRekap.innerHTML = '';
+            leaderboardList.innerHTML = '';
+            selectPerangkat.innerHTML = '<option value="ALL">-- Tampilkan Semua Perangkat --</option>';
+
+            let totalHadirAll = 0;
+            let totalSkorAll = 0;
+
+            const processedData = data.map(item => {
+                const pct = item.totalWorkDays > 0 ? ((item.hadir / item.totalWorkDays) * 100).toFixed(1) : 0;
+                const skor = hitungSkorDisiplin(item.hadir, item.totalWorkDays, item.avgTime);
+                
+                totalHadirAll += item.hadir;
+                totalSkorAll += skor;
+
+                const opt = document.createElement('option');
+                opt.value = item.nama;
+                opt.textContent = item.nama + " (" + item.jabatan + ")";
+                selectPerangkat.appendChild(opt);
+
+                return { ...item, pct, skor };
+            });
+
+            document.getElementById('stat-total-perangkat').textContent = processedData.length + " Orang";
+            const avgKehadiranPct = processedData.length > 0 && data[0].totalWorkDays > 0 ? ((totalHadirAll / (processedData.length * data[0].totalWorkDays)) * 100).toFixed(1) : 0;
+            document.getElementById('stat-avg-kehadiran').textContent = avgKehadiranPct + "%";
+            const avgSkorOverall = processedData.length > 0 ? Math.round(totalSkorAll / processedData.length) : 0;
+            document.getElementById('stat-disiplin-overall').textContent = avgSkorOverall + " Poin";
+
+            // JIKA DATA KOSONG (SETELAH RESET)
+            if (processedData.length === 0) {
+                matrixTbody.innerHTML = `<tr><td colspan="${totalDaysInMonth + 4}" class="px-4 py-8 text-center text-slate-400 font-medium"><i class="fa-regular fa-folder-open text-2xl mb-1 block"></i>Belum ada data matriks absensi. Silakan unggah file OpenSID terlebih dahulu.</td></tr>`;
+                tbodyRekap.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-slate-400 font-medium"><i class="fa-regular fa-folder-open text-2xl mb-1 block"></i>Belum ada data rekap kedisiplinan. Silakan unggah file OpenSID terlebih dahulu.</td></tr>`;
+                leaderboardList.innerHTML = `<div class="flex flex-col items-center justify-center py-16 text-slate-400 font-medium text-xs"><i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>Belum ada peringkat kedisiplinan.</div>`;
+
+                renderMiniKalender([], listLibur);
+                renderDetailHarian();
+                return;
+            }
+
+            processedData.forEach(item => {
+                const trMatrix = document.createElement('tr');
+                trMatrix.className = "hover:bg-slate-50/90 transition-colors group";
+                
+                trMatrix.innerHTML = `
+                    <td class="font-bold text-center text-slate-400 sticky-col-no group-hover:bg-slate-50">${item.no}</td>
+                    <td class="font-bold text-left px-3 text-slate-800 sticky-col-nama group-hover:bg-slate-50">${item.nama}</td>
+                    <td class="text-left text-slate-600 px-3 text-xs sticky-col-jabatan group-hover:bg-slate-50">${item.jabatan}</td>
+                `;
+
+                for (let day = 1; day <= totalDaysInMonth; day++) {
+                    const isLibur = listLibur.includes(day);
+                    const td = document.createElement('td');
+                    if (isLibur) {
+                        td.className = "bg-rose-50/50 text-rose-300 font-medium select-none text-center";
+                        td.textContent = "-";
+                    } else {
+                        const val = item.log[day];
+                        if (val && val !== '-') {
+                            td.className = "bg-emerald-50/80 text-emerald-800 font-semibold font-mono text-[10px] text-center";
+                            td.textContent = val;
+                        } else {
+                            td.className = "text-slate-300 select-none text-center";
+                            td.textContent = "-";
+                        }
+                    }
+                    trMatrix.appendChild(td);
+                }
+
+                const tdH = document.createElement('td');
+                tdH.className = "font-bold bg-emerald-50 text-emerald-800 text-center";
+                tdH.textContent = item.hadir;
+
+                const tdTH = document.createElement('td');
+                tdTH.className = "font-bold bg-rose-50 text-rose-700 text-center";
+                tdTH.textContent = item.mangkir;
+
+                trMatrix.appendChild(tdH);
+                trMatrix.appendChild(tdTH);
+                matrixTbody.appendChild(trMatrix);
+
+                const trRekap = document.createElement('tr');
+                trRekap.className = "hover:bg-slate-50/90 transition-colors";
+                
+                let badgeClass = "bg-rose-50 text-rose-700 border border-rose-200";
+                let barColor = "bg-rose-500";
+                
+                if (item.skor >= 80) {
+                    badgeClass = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    barColor = "bg-emerald-500";
+                } else if (item.skor >= 60) {
+                    badgeClass = "bg-amber-50 text-amber-700 border border-amber-200";
+                    barColor = "bg-amber-500";
+                }
+
+                trRekap.innerHTML = `
+                    <td class="px-4 py-3 text-center font-bold text-slate-400">${item.no}</td>
+                    <td class="px-4 py-3 font-bold text-slate-800">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                                ${getInitials(item.nama)}
+                            </span>
+                            <span>${item.nama}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-slate-600 text-xs">${item.jabatan}</td>
+                    <td class="px-4 py-3 text-center font-bold text-emerald-700 font-mono">${item.hadir}</td>
+                    <td class="px-4 py-3 text-center font-bold text-rose-600 font-mono">${item.mangkir}</td>
+                    <td class="px-4 py-3 text-center font-mono text-slate-700 text-xs">
+                        <span class="bg-slate-100 px-2 py-0.5 rounded font-semibold">${item.avgTime} WIB</span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="font-bold text-slate-800 font-mono">${item.pct}%</span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="inline-flex items-center gap-2">
+                            <span class="px-3 py-1 rounded-lg text-xs font-bold shadow-2xs inline-flex items-center gap-1.5 ${badgeClass}">
+                                <span class="w-1.5 h-1.5 rounded-full ${barColor}"></span>
+                                ${item.skor} Poin
+                            </span>
+                        </div>
+                    </td>
+                `;
+                tbodyRekap.appendChild(trRekap);
+            });
+
+            const sortedData = [...processedData].sort((a, b) => b.skor - a.skor);
+            sortedData.slice(0, 5).forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "group flex items-center justify-between px-3.5 py-2 bg-slate-50 hover:bg-emerald-50/40 rounded-xl border border-slate-100 hover:border-emerald-200 transition-all duration-200 shadow-2xs";
+                
+                let rankBadge = `<span class="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shadow-2xs">${index + 1}</span>`;
+                let glowRing = "";
+                
+                if (index === 0) {
+                    rankBadge = `<span class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center shadow-md shadow-amber-400/40 ring-2 ring-amber-300/60"><i class="fa-solid fa-crown text-xs"></i></span>`;
+                    glowRing = "ring-1 ring-amber-300/40 bg-gradient-to-r from-amber-50/50 to-emerald-50/30";
+                } else if (index === 1) {
+                    rankBadge = `<span class="w-8 h-8 rounded-lg bg-gradient-to-tr from-slate-300 to-slate-400 text-slate-800 font-bold text-xs flex items-center justify-center shadow-sm"><i class="fa-solid fa-medal text-xs"></i></span>`;
+                } else if (index === 2) {
+                    rankBadge = `<span class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-700/30 to-amber-600/40 text-amber-900 font-bold text-xs flex items-center justify-center shadow-2xs"><i class="fa-solid fa-award text-xs"></i></span>`;
+                }
+
+                if (glowRing) div.className += " " + glowRing;
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3.5 min-w-0">
+                        ${rankBadge}
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-slate-800 tracking-tight truncate">${item.nama}</p>
+                            <p class="text-[11px] text-slate-400 font-medium truncate">${item.jabatan}</p>
+                            <div class="w-32 sm:w-40 bg-slate-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                                <div class="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500" style="width: ${item.skor}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-3">
+                        <span class="inline-block px-2.5 py-1 bg-emerald-100/80 text-emerald-900 font-bold text-xs rounded-lg border border-emerald-200/60 shadow-2xs">${item.skor} Poin</span>
+                        <p class="text-[10px] text-slate-400 mt-1 font-semibold flex items-center justify-end gap-1">
+                            <i class="fa-solid fa-calendar-check text-[9px] text-emerald-600"></i> ${item.hadir} Hari Hadir
+                        </p>
+                    </div>
+                `;
+                leaderboardList.appendChild(div);
+            });
+
+            renderMiniKalender(processedData, listLibur);
+            renderDetailHarian();
+        }
+
+        function renderDetailHarian() {
+            const tbodyDetail = document.getElementById('tabel-detail-body');
+            const selectedName = document.getElementById('filter-perangkat').value;
+            tbodyDetail.innerHTML = '';
+
+            let logsToDisplay = rawLogData;
+
+            const filteredLogs = selectedName === 'ALL' 
+                ? logsToDisplay 
+                : logsToDisplay.filter(r => (r['Nama'] || r['nama']) === selectedName);
+
+            if (filteredLogs.length === 0) {
+                tbodyDetail.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400 font-medium"><i class="fa-regular fa-folder-open text-2xl mb-1 block"></i>Belum ada data log harian. Silakan unggah file OpenSID terlebih dahulu.</td></tr>`;
+                return;
+            }
+
+            filteredLogs.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/90 transition text-xs";
+
+                const nama = row['Nama'] || row['nama'] || '-';
+                const jabatan = row['Jabatan'] || row['jabatan'] || '-';
+                const tanggal = row['Tanggal'] || row['tanggal'] || '-';
+                const jamMasuk = row['Jam Masuk'] || row['jam_masuk'] || '-';
+                const jamKeluar = row['Jam Keluar'] || row['jam_keluar'] || '-';
+                const totalWaktu = row['Total Waktu'] || row['total_waktu'] || '-';
+                const status = row['Status Kehadiran'] || row['status_kehadiran'] || 'Hadir';
+
+                let statusBadge = "bg-blue-50 text-blue-700 border-blue-200";
+                let statusIcon = "fa-check";
+                if (status.toLowerCase().includes('lupa')) {
+                    statusBadge = "bg-amber-50 text-amber-700 border-amber-200";
+                    statusIcon = "fa-triangle-exclamation";
+                } else if (status.toLowerCase().includes('terlambat') || status.toLowerCase().includes('tidak')) {
+                    statusBadge = "bg-rose-50 text-rose-700 border-rose-200";
+                    statusIcon = "fa-clock";
+                } else if (status.toLowerCase().includes('hadir') || status.toLowerCase().includes('tepat')) {
+                    statusBadge = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                    statusIcon = "fa-circle-check";
+                }
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-bold text-slate-800">${nama}</td>
+                    <td class="px-4 py-3 text-slate-600">${jabatan}</td>
+                    <td class="px-4 py-3 text-slate-700 font-medium">${tanggal}</td>
+                    <td class="px-4 py-3 text-center font-mono text-emerald-700 font-bold">${jamMasuk}</td>
+                    <td class="px-4 py-3 text-center font-mono text-slate-700">${jamKeluar}</td>
+                    <td class="px-4 py-3 text-center font-mono font-semibold text-slate-800">${totalWaktu}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusBadge}">
+                            <i class="fa-solid ${statusIcon} text-[9px]"></i>
+                            ${status}
+                        </span>
+                    </td>
+                `;
+                tbodyDetail.appendChild(tr);
+            });
+        }
+
+        function renderMiniKalender(data, listLibur) {
+            const gridContainer = document.getElementById('mini-calendar-grid');
+            if (!gridContainer) return;
+            gridContainer.innerHTML = '';
+
+            const badgePeriode = document.getElementById('cal-periode-badge');
+            if (badgePeriode) badgePeriode.textContent = detectedPeriode;
+
+            const firstDayIndex = new Date(detectedYear, detectedMonth - 1, 1).getDay();
+            const startOffset = (firstDayIndex === 0 ? 6 : firstDayIndex - 1);
+
+            for (let i = 0; i < startOffset; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "h-11 sm:h-12 rounded-lg border border-dashed border-slate-200/60 bg-slate-50/40 opacity-40 select-none";
+                gridContainer.appendChild(emptyCell);
+            }
+
+            const totalAparatur = data.length;
+            let totalHadirHariKerja = 0;
+            let countHariKerja = 0;
+
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const isLibur = listLibur.includes(day);
+                const dateObj = new Date(detectedYear, detectedMonth - 1, day);
+                const dayOfWeek = dateObj.getDay();
+                
+                // Cek keterangan khusus hari libur
+                let keteranganLibur = '';
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    keteranganLibur = 'Akhir Pekan (Libur)';
+                } else {
+                    let key = `${detectedMonth}-${day}`;
+                    if (daftarHariLiburNasional2026 && daftarHariLiburNasional2026[key]) {
+                        keteranganLibur = daftarHariLiburNasional2026[key];
+                    } else {
+                        keteranganLibur = 'Libur / Cuti Ekstra';
+                    }
+                }
+
+                let hadirCount = 0;
+                data.forEach(item => {
+                    const val = item.log && item.log[day];
+                    if (val && val !== '-') {
+                        hadirCount++;
+                    }
+                });
+
+                if (!isLibur) {
+                    totalHadirHariKerja += hadirCount;
+                    countHariKerja++;
+                }
+
+                const pct = totalAparatur > 0 ? (hadirCount / totalAparatur) * 100 : 0;
+
+                const cell = document.createElement('div');
+                cell.className = "group relative h-12 sm:h-14 p-1 rounded-lg border flex flex-col justify-between transition-all duration-200 select-none ";
+
+                let badgeHtml = '';
+                let tooltipText = '';
+
+                if (totalAparatur === 0) {
+                    cell.className += "bg-slate-50 border-slate-200 text-slate-400";
+                    badgeHtml = '<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-100 text-slate-400 font-mono">-</span>';
+                    tooltipText = `Tgl ${day}: Belum ada data`;
+                } else if (isLibur) {
+                    cell.className += "bg-rose-50/60 border-rose-200 text-rose-600";
+                    // Tampilkan teks nama hari libur di lencana kecil jika muat, atau tulisan "Libur"
+                    badgeHtml = `<span class="text-[8px] font-bold px-1 py-0.5 rounded bg-rose-100 text-rose-700 truncate max-w-[55px]" title="${keteranganLibur}">Libur</span>`;
+                    tooltipText = `Tgl ${day}: ${keteranganLibur}`;
+                } else if (pct >= 80) {
+                    cell.className += "bg-emerald-50/70 border-emerald-200 text-emerald-950";
+                    badgeHtml = '<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono">' + hadirCount + '/' + totalAparatur + '</span>';
+                    tooltipText = `Tgl ${day}: ${hadirCount} Hadir (${Math.round(pct)}%)`;
+                } else if (pct >= 50) {
+                    cell.className += "bg-amber-50/70 border-amber-200 text-amber-950";
+                    badgeHtml = '<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-800 font-mono">' + hadirCount + '/' + totalAparatur + '</span>';
+                    tooltipText = `Tgl ${day}: ${hadirCount} Hadir (${Math.round(pct)}%)`;
+                } else {
+                    cell.className += "bg-orange-50/60 border-orange-200 text-orange-950";
+                    badgeHtml = '<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-orange-100 text-orange-800 font-mono">' + hadirCount + '/' + totalAparatur + '</span>';
+                    tooltipText = `Tgl ${day}: ${hadirCount} Hadir (${Math.round(pct)}%)`;
+                }
+
+                cell.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold ${isLibur ? 'text-rose-600' : (totalAparatur === 0 ? 'text-slate-400' : 'text-slate-800')}">${day}</span>
+                        ${badgeHtml}
+                    </div>
+                    ${isLibur ? `<div class="text-[8px] font-semibold text-rose-500 truncate leading-tight mt-0.5" title="${keteranganLibur}">${keteranganLibur}</div>` : 
+                    `<div class="w-full bg-slate-200/70 h-1 rounded-full overflow-hidden mt-1">
+                        <div class="${totalAparatur === 0 ? 'bg-slate-300' : (pct >= 80 ? 'bg-emerald-500' : (pct >= 50 ? 'bg-amber-500' : 'bg-orange-500'))} h-full rounded-full" style="width: ${totalAparatur === 0 ? '0%' : pct + '%'}"></div>
+                    </div>`}
+                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-35 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-xl pointer-events-none text-center">
+                        <p class="font-bold text-amber-300 border-b border-slate-700 pb-1">${tooltipText}</p>
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></div>
+                    </div>
+                `;
+
+                gridContainer.appendChild(cell);
+            }
+
+            const avgPerDay = countHariKerja > 0 ? (totalHadirHariKerja / countHariKerja).toFixed(1) : 0;
+            const avgEl = document.getElementById('cal-avg-hadir-perhari');
+            if (avgEl) avgEl.textContent = avgPerDay + ' dari ' + totalAparatur + ' Aparatur / Hari';
+        }
+
+        function tampilkanNotifikasi(pesan, jenis = 'info') {
+            const toast = document.createElement('div');
+            const warna = jenis === 'error' ? 'rose' : jenis === 'success' ? 'emerald' : 'teal';
+            toast.className = `fixed right-4 bottom-4 z-[110] max-w-sm rounded-xl border border-${warna}-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-lg animate-[surface-in_.2s_ease]`;
+            toast.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid ${jenis === 'error' ? 'fa-circle-xmark text-rose-500' : 'fa-circle-check text-emerald-500'}"></i><span>${pesan}</span></div>`;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(8px)'; setTimeout(() => toast.remove(), 200); }, 3500);
+        }
+
+        function tampilkanDialog(pesan, aksi) {
+            const dialog = document.createElement('div');
+            dialog.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/30 p-4';
+            dialog.innerHTML = `<div role="dialog" aria-modal="true" class="w-full max-w-md rounded-xl bg-white border border-slate-200 p-5 shadow-lg animate-[surface-in_.2s_ease]">
+                <div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></div><div><h3 class="font-bold text-slate-800">Konfirmasi tindakan</h3><p class="text-sm text-slate-500 mt-1">${pesan}</p></div></div>
+                <div class="flex justify-end gap-2 mt-5"><button type="button" data-cancel class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Batal</button><button type="button" data-ok class="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">Lanjutkan</button></div></div>`;
+            document.body.appendChild(dialog);
+            const close = () => { dialog.style.opacity = '0'; setTimeout(() => dialog.remove(), 180); };
+            dialog.querySelector('[data-cancel]').onclick = close;
+            dialog.querySelector('[data-ok]').onclick = () => { close(); aksi(); };
+            dialog.addEventListener('click', e => { if (e.target === dialog) close(); });
+        }
+
+        function konfirmasiReset() {
+            tampilkanDialog('Semua data absensi akan dikosongkan dan pengaturan dikembalikan ke kondisi awal.', resetDefaultData);
+        }
+
+        function resetDefaultData() {
+            localStorage.removeItem('wonokerto_absensi_state');
+
+            rawLogData = [];
+            summaryData = [];
+            detectedPeriode = "BELUM ADA DATA";
+            detectedYear = 2026;
+            detectedMonth = new Date().getMonth() + 1;
+            totalDaysInMonth = new Date(detectedYear, detectedMonth, 0).getDate();
+
+            const labelBtn = document.getElementById('label-upload-btn');
+            if (labelBtn) labelBtn.textContent = "Unggah File OpenSID";
+            
+            document.getElementById('input-libur-tambahan').value = "";
+
+            kalkulasiData();
+        }
+
+        // Inisialisasi awal saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                updateDropdownArsip(); // <--- Tambahkan panggilan ini
+                const savedState = localStorage.getItem('wonokerto_absensi_state');
+                if (savedState) {
+                    const parsed = JSON.parse(savedState);
+                    rawLogData = parsed.rawLogData || [];
+                    summaryData = parsed.summaryData || [];
+                    detectedPeriode = parsed.detectedPeriode || "BELUM ADA DATA";
+                    detectedYear = parsed.detectedYear || 2026;
+                    detectedMonth = parsed.detectedMonth || 9;
+                    totalDaysInMonth = parsed.totalDaysInMonth || 30;
+                    
+                    if (parsed.liburTambahan) {
+                        document.getElementById('input-libur-tambahan').value = parsed.liburTambahan;
+                    }
+                    if (parsed.fileName && document.getElementById('label-upload-btn')) {
+                        document.getElementById('label-upload-btn').textContent = parsed.fileName;
+                    }
+                    
+                    kalkulasiData();
+                    return;
+                }
+            } catch (e) {
+                console.error("Gagal memuat localStorage:", e);
+            }
+
+            summaryData = [];
+            rawLogData = [];
+            kalkulasiData();
+        });
+        
+        // Daftar Lengkap Hari Libur Nasional & Cuti Bersama Tahun 2026 (Resmi SKB 3 Menteri)
+        const daftarHariLiburNasional2026 = {
+            // Januari
+            "1-1": "Tahun Baru Masehi 2026",
+            "1-16": "Isra Mikraj Nabi Muhammad SAW",
+            
+            // Februari
+            "2-16": "Cuti Bersama Tahun Baru Imlek",
+            "2-17": "Tahun Baru Imlek 2577 Kongzili",
+            
+            // Maret
+            "3-18": "Cuti Bersama Hari Suci Nyepi",
+            "3-19": "Hari Suci Nyepi (Tahun Baru Saka 1948)",
+            "3-20": "Cuti Bersama Hari Raya Idul Fitri",
+            "3-21": "Hari Raya Idul Fitri 1447 Hijriah (Hari Pertama)",
+            "3-22": "Hari Raya Idul Fitri 1447 Hijriah (Hari Kedua)",
+            "3-23": "Cuti Bersama Hari Raya Idul Fitri",
+            "3-24": "Cuti Bersama Hari Raya Idul Fitri",
+            
+            // April
+            "4-3": "Wafat Yesus Kristus (Jumat Agung)",
+            "4-5": "Kebangkitan Yesus Kristus (Paskah)",
+            
+            // Mei
+            "5-1": "Hari Buruh Internasional",
+            "5-14": "Kenaikan Yesus Kristus",
+            "5-15": "Cuti Bersama Kenaikan Yesus Kristus",
+            "5-27": "Hari Raya Idul Adha 1447 Hijriah",
+            "5-28": "Cuti Bersama Hari Raya Idul Adha",
+            "5-31": "Hari Raya Waisak 2570 BE",
+            
+            // Juni
+            "6-1": "Hari Lahir Pancasila",
+            "6-16": "Tahun Baru Islam 1448 Hijriah",
+            
+            // Agustus
+            "8-17": "Hari Proklamasi Kemerdekaan Republik Indonesia",
+            "8-25": "Maulid Nabi Muhammad SAW",
+            
+            // Desember
+            "12-24": "Cuti Bersama Hari Raya Natal",
+            "12-25": "Kelahiran Yesus Kristus (Hari Raya Natal)"
+        };
+        function getListLibur() {
+            let liburs = [];
+            for (let d = 1; d <= totalDaysInMonth; d++) {
+                let dateObj = new Date(detectedYear, detectedMonth - 1, d);
+                let dayOfWeek = dateObj.getDay();
+                
+                // 1. Cek Akhir Pekan (Sabtu = 6, Minggu = 0)
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    liburs.push(d);
+                } else {
+                    // 2. Cek Libur Nasional Berdasarkan Bulan & Tanggal
+                    let key = `${detectedMonth}-${d}`;
+                    if (daftarHariLiburNasional2026[key]) {
+                        liburs.push(d);
+                    }
+                }
+            }
+
+            // 3. Gabungkan dengan input libur tambahan manual dari form (jika ada)
+            const inputExtra = document.getElementById('input-libur-tambahan').value;
+            if (inputExtra.trim()) {
+                const extras = inputExtra.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+                liburs = [...new Set([...liburs, ...extras])];
+            }
+
+            return liburs;
+        }
+
+        // 1. Fungsi Ekspor Tabel Rekap ke File Excel (.xlsx)
+        function eksporRekapExcel() {
+            if (summaryData.length === 0) {
+                alert("Belum ada data rekap untuk diekspor! Silakan unggah file OpenSID terlebih dahulu.");
+                return;
+            }
+
+            // Ambil baris data dari Tabel 2
+            let dataExport = [];
+            const rows = document.querySelectorAll('#tabel-rekap-body tr');
+            
+            rows.forEach((tr) => {
+                const cols = tr.querySelectorAll('td');
+                if (cols.length >= 8) {
+                    // Ambil teks nama tanpa inisial avatar
+                    const namaEl = cols[1].querySelector('span:last-child') || cols[1];
+                    const namaClean = namaEl.innerText.trim();
+
+                    dataExport.push({
+                        "No": cols[0].innerText.trim(),
+                        "Nama Lengkap": namaClean,
+                        "Jabatan": cols[2].innerText.trim(),
+                        "Hadir (H)": parseInt(cols[3].innerText.trim()) || 0,
+                        "Mangkir (TH)": parseInt(cols[4].innerText.trim()) || 0,
+                        "Rata-rata Masuk": cols[5].innerText.trim(),
+                        "Persentase Kehadiran": cols[6].innerText.trim(),
+                        "Skor Disiplin": cols[7].innerText.trim()
+                    });
+                }
+            });
+
+            // Buat Worksheet & Workbook baru dengan SheetJS
+            const worksheet = XLSX.utils.json_to_sheet(dataExport);
+            
+            // Atur lebar kolom otomatis
+            worksheet['!cols'] = [
+                { wch: 5 },  // No
+                { wch: 30 }, // Nama
+                { wch: 30 }, // Jabatan
+                { wch: 10 }, // Hadir
+                { wch: 12 }, // Mangkir
+                { wch: 18 }, // Rata-rata Masuk
+                { wch: 20 }, // % Kehadiran
+                { wch: 15 }  // Skor Disiplin
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Kedisiplinan");
+
+            // Simpan file Excel
+            const namaFile = `Rekap_Kehadiran_Desa_Wonokerto_${detectedPeriode.replace(/\s+/g, '_')}.xlsx`;
+            XLSX.writeFile(workbook, namaFile);
+        }
+
+        // 2. Fungsi Cetak Khusus per Tabel (Siap Simpan sebagai PDF dari Browser)
+        function cetakTabel(targetTabelId) {
+            if (summaryData.length === 0) {
+                alert("Belum ada data yang dapat dicetak!");
+                return;
+            }
+
+            // Atur atribut cetak pada <body>
+            document.body.setAttribute('data-print-target', targetTabelId);
+            
+            // Sesuaikan judul dokumen cetak
+            const printJudul = document.getElementById('print-judul-dokumen');
+            if (printJudul) {
+                if (targetTabelId === 'tabel-1') {
+                    printJudul.textContent = "MATRIKS KALENDER ABSENSI HARIAN APARATUR DESA";
+                } else if (targetTabelId === 'tabel-2') {
+                    printJudul.textContent = "REKAPITULASI SKOR KEDISIPLINAN & PERSENTASE KEHADIRAN";
+                } else if (targetTabelId === 'tabel-3') {
+                    printJudul.textContent = "RINCIAN DETAIL LOG ABSENSI HARIAN APARATUR DESA";
+                }
+            }
+
+            // Panggil dialog Cetak / Save to PDF bawaan browser
+            window.print();
+            
+            // Hapus atribut target setelah dialog cetak ditutup
+            setTimeout(() => {
+                document.body.removeAttribute('data-print-target');
+            }, 1000);
+        }
+
+        // 1. Simpan Data Bulan Saat Ini ke Arsip Khusus (Berdasarkan Tahun & Bulan)
+        function simpanKeArsip(appState) {
+            if (!detectedYear || !detectedMonth || rawLogData.length === 0) return;
+
+            const keyArsip = `wonokerto_absensi_${detectedYear}_${detectedMonth}`;
+            try {
+                // Simpan state bulan ini
+                localStorage.setItem(keyArsip, JSON.stringify(appState));
+
+                // Perbarui Indeks Daftar Arsip yang Tersimpan
+                let daftarArsip = JSON.parse(localStorage.getItem('wonokerto_index_arsip') || '[]');
+                const infoArsip = {
+                    key: keyArsip,
+                    periode: detectedPeriode,
+                    year: detectedYear,
+                    month: detectedMonth
+                };
+
+                // Cegah duplikasi di indeks
+                const indexExisting = daftarArsip.findIndex(item => item.key === keyArsip);
+                if (indexExisting >= 0) {
+                    daftarArsip[indexExisting] = infoArsip;
+                } else {
+                    daftarArsip.push(infoArsip);
+                }
+
+                // Urutkan arsip berdasarkan tahun & bulan (terbaru di atas)
+                daftarArsip.sort((a, b) => (b.year * 100 + b.month) - (a.year * 100 + a.month));
+                localStorage.setItem('wonokerto_index_arsip', JSON.stringify(daftarArsip));
+
+                updateDropdownArsip();
+            } catch (e) {
+                console.error("Gagal menyimpan arsip bulanan:", e);
+            }
+        }
+
+        // 2. Perbarui Tampilan Dropdown Pilih Arsip Bulan
+        function updateDropdownArsip() {
+            const selectEl = document.getElementById('select-arsip-bulan');
+            if (!selectEl) return;
+
+            const daftarArsip = JSON.parse(localStorage.getItem('wonokerto_index_arsip') || '[]');
+            const currentKey = `wonokerto_absensi_${detectedYear}_${detectedMonth}`;
+
+            selectEl.innerHTML = '';
+            
+            if (daftarArsip.length === 0) {
+                selectEl.innerHTML = `<option value="NONE" class="bg-slate-800 text-white">Belum Ada Arsip</option>`;
+                return;
+            }
+
+            daftarArsip.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key;
+                opt.className = "bg-slate-800 text-white";
+                opt.textContent = item.periode;
+                if (item.key === currentKey) {
+                    opt.selected = true;
+                }
+                selectEl.appendChild(opt);
+            });
+        }
+
+        // 3. Muat Data Arsip Bulan yang Dipilih Pengguna
+        function muatArsipBulan(keyArsip) {
+            if (!keyArsip || keyArsip === 'NONE') return;
+
+            try {
+                const savedData = localStorage.getItem(keyArsip);
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    rawLogData = parsed.rawLogData || [];
+                    summaryData = parsed.summaryData || [];
+                    detectedPeriode = parsed.detectedPeriode || "BELUM ADA DATA";
+                    detectedYear = parsed.detectedYear || 2026;
+                    detectedMonth = parsed.detectedMonth || 9;
+                    totalDaysInMonth = parsed.totalDaysInMonth || 30;
+
+                    if (parsed.liburTambahan !== undefined) {
+                        document.getElementById('input-libur-tambahan').value = parsed.liburTambahan;
+                    }
+                    if (parsed.fileName && document.getElementById('label-upload-btn')) {
+                        document.getElementById('label-upload-btn').textContent = parsed.fileName;
+                    }
+
+                    // Simpan juga sebagai state aktif terakhir
+                    localStorage.setItem('wonokerto_absensi_state', savedData);
+
+                    kalkulasiData();
+                }
+            } catch (e) {
+                console.error("Gagal memuat data arsip:", e);
+                alert("Gagal memuat arsip bulan yang dipilih!");
+            }
+        }
+        // Fungsi untuk menyinkronkan input form dengan lembar cetak secara real-time & simpan ke localStorage
+        function simpanPengaturanTtd() {
+            const nama1 = document.getElementById('input-nama-1').value;
+            const jabatan1 = document.getElementById('input-jabatan-1').value;
+            const nama2 = document.getElementById('input-nama-2').value;
+            const jabatan2 = document.getElementById('input-jabatan-2').value;
+            const nama3 = document.getElementById('input-nama-3').value;
+            const jabatan3 = document.getElementById('input-jabatan-3').value;
+
+            // Masukkan ke area cetak
+            document.getElementById('print-nama-1').textContent = nama1;
+            document.getElementById('print-jabatan-1').textContent = jabatan1;
+            document.getElementById('print-nama-2').textContent = nama2;
+            document.getElementById('print-jabatan-2').textContent = jabatan2;
+            document.getElementById('print-nama-3').textContent = nama3;
+            document.getElementById('print-jabatan-3').textContent = jabatan3;
+
+            // Simpan ke localStorage agar tidak hilang saat direfresh
+            const ttdConfig = { nama1, jabatan1, nama2, jabatan2, nama3, jabatan3 };
+            localStorage.setItem('wonokerto_ttd_config', JSON.stringify(ttdConfig));
+        }
+
+        // Muat pengaturan tanda tangan saat halaman dibuka
+        function muatPengaturanTtd() {
+            try {
+                const saved = localStorage.getItem('wonokerto_ttd_config');
+                if (saved) {
+                    const cfg = JSON.parse(saved);
+                    if (cfg.nama1) document.getElementById('input-nama-1').value = cfg.nama1;
+                    if (cfg.jabatan1) document.getElementById('input-jabatan-1').value = cfg.jabatan1;
+                    if (cfg.nama2) document.getElementById('input-nama-2').value = cfg.nama2;
+                    if (cfg.jabatan2) document.getElementById('input-jabatan-2').value = cfg.jabatan2;
+                    if (cfg.nama3) document.getElementById('input-nama-3').value = cfg.nama3;
+                    if (cfg.jabatan3) document.getElementById('input-jabatan-3').value = cfg.jabatan3;
+                    simpanPengaturanTtd();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Panggil muatPengaturanTtd() di dalam event DOMContentLoaded atau di akhir script
+        document.addEventListener('DOMContentLoaded', () => {
+            muatPengaturanTtd();
+        });
+        // Fungsi untuk membuka/menutup panel pengaturan tanda tangan secara interaktif
+        function togglePanelTtd() {
+            const konten = document.getElementById('konten-panel-ttd');
+            const icon = document.getElementById('icon-toggle-ttd');
+            const label = document.getElementById('label-toggle-ttd');
+
+            if (konten.classList.contains('hidden')) {
+                konten.classList.remove('hidden');
+                requestAnimationFrame(() => konten.classList.add('panel-open'));
+                icon.classList.add('rotate-180');
+                label.textContent = 'Sembunyikan Pengaturan';
+            } else {
+                konten.classList.remove('panel-open');
+                icon.classList.remove('rotate-180');
+                label.textContent = 'Tampilkan Pengaturan';
+                setTimeout(() => {
+                    if (!konten.classList.contains('panel-open')) konten.classList.add('hidden');
+                }, 300);
+            }
+        }
+        // Fungsi untuk memperbarui tanggal tanda tangan secara dinamis berdasarkan periode laporan
+        function updateTandaTanganDinamis() {
+            const elTglTtd = document.getElementById('print-tgl-ttd');
+            if (!elTglTtd) return;
+
+            let namaBulan = "September";
+            let tahun = detectedYear || 2026;
+
+            if (window.detectedPeriode && window.detectedPeriode !== "BELUM ADA DATA") {
+                const parts = window.detectedPeriode.split(' ');
+                if (parts.length > 0) namaBulan = parts[0];
+                if (parts.length > 1) tahun = parts[1];
+            }
+
+            // Hitung otomatis tanggal terakhir di bulan tersebut (misal: 30 atau 31)
+            const lastDay = new Date(tahun, detectedMonth || 9, 0).getDate();
+            
+            // Format huruf kapital di awal nama bulan
+            let bulanFormatted = namaBulan.charAt(0).toUpperCase() + namaBulan.slice(1).toLowerCase();
+
+            elTglTtd.textContent = `Wonokerto, ${lastDay} ${bulanFormatted} ${tahun}`;
+        }
+        
+    </script>
+</body>
+</html>
